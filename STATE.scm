@@ -15,7 +15,7 @@
   '((version . "0.1.0")
     (schema-version . "1.0")
     (created . "2025-12-15")
-    (updated . "2025-12-15")
+    (updated . "2025-12-17")
     (project . "esn")
     (repo . "github.com/hyperpolymath/esn")))
 
@@ -41,7 +41,7 @@
 
 (define current-position
   '((phase . "v0.1 - Initial Setup and RSR Compliance")
-    (overall-completion . 25)
+    (overall-completion . 35)
 
     (components
      ((rsr-compliance
@@ -49,10 +49,20 @@
         (completion . 100)
         (notes . "SHA-pinned actions, SPDX headers, multi-platform CI")))
 
+      (package-management
+       ((status . "complete")
+        (completion . 100)
+        (notes . "guix.scm (primary), flake.nix (fallback), Cargo.lock generated")))
+
+      (security
+       ((status . "complete")
+        (completion . 100)
+        (notes . "SECURITY.md updated, all workflows SHA-pinned, license corrected")))
+
       (documentation
        ((status . "foundation")
-        (completion . 30)
-        (notes . "README exists, META/ECOSYSTEM/STATE.scm added")))
+        (completion . 40)
+        (notes . "README exists, META/ECOSYSTEM/STATE.scm added, SECURITY.md complete")))
 
       (testing
        ((status . "minimal")
@@ -68,7 +78,11 @@
      ("RSR-compliant CI/CD pipeline"
       "Multi-platform mirroring (GitHub, GitLab, Bitbucket)"
       "SPDX license headers on all files"
-      "SHA-pinned GitHub Actions"))))
+      "SHA-pinned GitHub Actions (all workflows)"
+      "Guix package definition (guix.scm)"
+      "Nix flake for reproducible builds (flake.nix)"
+      "Security policy with vulnerability reporting"
+      "Dual licensing (MIT OR AGPL-3.0-or-later)"))))
 
 ;;;============================================================================
 ;;; ROUTE TO MVP
@@ -113,7 +127,10 @@
      ())  ;; No critical blockers
 
     (high-priority
-     ())  ;; No high-priority blockers
+     ((dependency-version-conflict
+       ((description . "ndarray-rand 0.16 requires rand 0.9 but code uses rand 0.8 APIs")
+        (impact . "Build fails with E0599 and E0277 errors")
+        (needed . "Either downgrade ndarray-rand to 0.14 or update code to rand 0.9 API")))))
 
     (medium-priority
      ((test-coverage
@@ -133,12 +150,13 @@
 
 (define critical-next-actions
   '((immediate
-     (("Review and update documentation" . medium)
-      ("Add initial test coverage" . high)
-      ("Verify CI/CD pipeline functionality" . high)))
+     (("Fix rand/ndarray-rand version conflict" . critical)
+      ("Verify CI/CD pipeline functionality" . high)
+      ("Add initial test coverage" . high)))
 
     (this-week
-     (("Implement core features" . high)
+     (("Review and update documentation" . medium)
+      ("Implement core features" . high)
       ("Expand test coverage" . medium)))
 
     (this-month
@@ -157,7 +175,18 @@
        ("Added META.scm, ECOSYSTEM.scm, STATE.scm"
         "Established RSR compliance"
         "Created initial project checkpoint"))
-      (notes . "First STATE.scm checkpoint created via automated script")))))
+      (notes . "First STATE.scm checkpoint created via automated script"))
+
+     ((date . "2025-12-17")
+      (session . "security-review-and-scm-fixes")
+      (accomplishments
+       ("Fixed SECURITY.md - replaced template with actual policy"
+        "Corrected Cargo.toml license to MIT OR AGPL-3.0-or-later"
+        "Created guix.scm for Guix package management (primary)"
+        "Created flake.nix for Nix reproducible builds (fallback)"
+        "Generated Cargo.lock for reproducible Rust builds"
+        "Fixed quality.yml - SHA-pinned EditorConfig action"))
+      (notes . "Security review completed, all SCM files now in place")))))
 
 ;;;============================================================================
 ;;; HELPER FUNCTIONS (for Guile evaluation)
@@ -185,10 +214,10 @@
 (define state-summary
   '((project . "esn")
     (version . "0.1.0")
-    (overall-completion . 25)
+    (overall-completion . 35)
     (next-milestone . "v0.2 - Core Functionality")
     (critical-blockers . 0)
-    (high-priority-issues . 0)
-    (updated . "2025-12-15")))
+    (high-priority-issues . 1)
+    (updated . "2025-12-17")))
 
 ;;; End of STATE.scm
