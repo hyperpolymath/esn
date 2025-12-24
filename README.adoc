@@ -1,0 +1,26 @@
+= ESN (Echo State Networks)
+:toc: auto
+
+A Rust implementation of Echo State Networks (reservoir computing) for time series prediction and classification.
+
+== Overview
+
+ESN provides reservoir computing capabilities for time series analysis, prediction, and classification tasks.
+
+== Features
+
+* Echo State Network implementation
+* Time series prediction
+* Classification support
+* Rust performance
+
+== Installation
+
+[source,bash]
+----
+cargo add esn
+----
+
+== License
+
+AGPL-3.0-or-later
