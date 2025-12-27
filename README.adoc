@@ -241,6 +241,53 @@ Integrate multiple sensor streams with different temporal characteristics.
 === Sequence Classification
 Classify time series patterns (gesture recognition, activity detection).
 
+== Data Requirements
+
+ESN expects temporal data as sequences of `Array1<f32>` vectors.
+
+=== Quick Reference
+
+[cols="1,2,2"]
+|===
+| Requirement | Value | Notes
+
+| *Data type*
+| `f32`
+| Single-precision float
+
+| *Value range*
+| [-1, 1] or [0, 1]
+| Normalize before training
+
+| *Minimum samples*
+| 500+
+| More is better
+
+| *Washout*
+| ~10% of training
+| Discard initial transients
+|===
+
+=== Input Format
+
+[source,rust]
+----
+// Training data: Vec of time steps
+let inputs: Vec<Array1<f32>> = vec![
+    Array1::from_vec(vec![0.1, 0.2]),  // t=0
+    Array1::from_vec(vec![0.3, 0.4]),  // t=1
+    // ...
+];
+
+let targets: Vec<Array1<f32>> = vec![
+    Array1::from_vec(vec![0.5]),  // target at t=0
+    Array1::from_vec(vec![0.6]),  // target at t=1
+    // ...
+];
+----
+
+For detailed data preprocessing guidelines, benchmark datasets, and evaluation metrics, see link:MODEL_CARD.adoc[Model Card].
+
 == API Reference
 
 === `EchoStateNetwork`
@@ -339,6 +386,44 @@ rayon = "1.10"        # Parallel computation
 serde = "1.0"         # Serialization
 thiserror = "2.0"     # Error handling
 tracing = "0.1"       # Structured logging
+----
+
+== Documentation
+
+[cols="1,3"]
+|===
+| Document | Description
+
+| link:MODEL_CARD.adoc[Model Card]
+| Dataset expectations, training procedure, evaluation metrics, limitations
+
+| link:ROADMAP.adoc[Roadmap]
+| Development plans and future features
+
+| link:SECURITY.md[Security]
+| Security policy and vulnerability reporting
+|===
+
+== Benchmark
+
+Run the reproducible Mackey-Glass benchmark:
+
+[source,bash]
+----
+cargo run --release --example benchmark
+----
+
+Expected output (NRMSE ~0.016):
+[source]
+----
+═══════════════════════════════════════════════════════════════
+                        RESULTS SUMMARY
+═══════════════════════════════════════════════════════════════
+  Total time:         ~600ms
+  Training MSE:       ~1.7e-4
+  Test MSE:           ~2.6e-4
+  Test NRMSE:         ~0.016
+  Status:             EXCELLENT (NRMSE < 0.1)
 ----
 
 == References
