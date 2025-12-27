@@ -9,15 +9,15 @@
 //! The ESN receives processed state from the LSM and produces
 //! outputs that can drive actions or influence LLM prompts.
 
-use ndarray::{s, Array1, Array2, Axis};
+use ndarray::{s, Array1, Array2};
 use ndarray_rand::RandomExt;
-use rand::distributions::Uniform;
+use rand::distr::Uniform;
 use rand::Rng;
 use rand_distr::Normal;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use thiserror::Error;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Errors in ESN operations
 #[derive(Error, Debug)]
@@ -87,7 +87,13 @@ impl Activation {
             Activation::Tanh => x.tanh(),
             Activation::Sigmoid => 1.0 / (1.0 + (-x).exp()),
             Activation::ReLU => x.max(0.0),
-            Activation::LeakyReLU(alpha) => if x > 0.0 { x } else { alpha * x },
+            Activation::LeakyReLU(alpha) => {
+                if x > 0.0 {
+                    x
+                } else {
+                    alpha * x
+                }
+            }
             Activation::Identity => x,
         }
     }
@@ -135,18 +141,29 @@ pub struct EchoStateNetwork {
 
 impl EchoStateNetwork {
     /// Create a new ESN
-    pub fn new(config: EsnConfig, input_dim: usize, activation: Activation) -> Result<Self, EsnError> {
+    pub fn new(
+        config: EsnConfig,
+        input_dim: usize,
+        activation: Activation,
+    ) -> Result<Self, EsnError> {
         if config.reservoir_size == 0 {
-            return Err(EsnError::InvalidConfig("Reservoir size must be positive".into()));
+            return Err(EsnError::InvalidConfig(
+                "Reservoir size must be positive".into(),
+            ));
         }
 
         if config.spectral_radius <= 0.0 {
-            return Err(EsnError::InvalidConfig("Spectral radius must be positive".into()));
+            return Err(EsnError::InvalidConfig(
+                "Spectral radius must be positive".into(),
+            ));
         }
 
-        debug!("Creating ESN: {} neurons, input_dim={}", config.reservoir_size, input_dim);
+        debug!(
+            "Creating ESN: {} neurons, input_dim={}",
+            config.reservoir_size, input_dim
+        );
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Create sparse reservoir matrix
         let w_reservoir = Self::create_reservoir_matrix(&config, &mut rng);
@@ -176,21 +193,21 @@ impl EchoStateNetwork {
     /// Create sparse reservoir weight matrix with target spectral radius
     fn create_reservoir_matrix(config: &EsnConfig, rng: &mut impl Rng) -> Array2<f32> {
         let n = config.reservoir_size;
-        let dist = Uniform::new(-1.0f32, 1.0f32);
+        let dist = Uniform::new(-1.0f32, 1.0f32).unwrap();
 
         let mut w = Array2::zeros((n, n));
 
         // Fill with sparse random values
         for i in 0..n {
             for j in 0..n {
-                if rng.gen::<f32>() > config.sparsity {
+                if rng.random::<f32>() > config.sparsity {
                     w[[i, j]] = rng.sample(dist);
                 }
             }
         }
 
         // Estimate spectral radius using power iteration
-        let mut v = Array1::random_using(n, dist, rng);
+        let mut v = Array1::random_using(n, &dist, rng);
         for _ in 0..20 {
             let new_v = w.dot(&v);
             let norm = new_v.mapv(|x| x * x).sum().sqrt();
@@ -210,28 +227,35 @@ impl EchoStateNetwork {
     }
 
     /// Create input weight matrix
-    fn create_input_matrix(config: &EsnConfig, input_dim: usize, rng: &mut impl Rng) -> Array2<f32> {
-        let dist = Uniform::new(-1.0f32, 1.0f32);
-        let w = Array2::random_using((config.reservoir_size, input_dim), dist, rng);
+    fn create_input_matrix(
+        config: &EsnConfig,
+        input_dim: usize,
+        rng: &mut impl Rng,
+    ) -> Array2<f32> {
+        let dist = Uniform::new(-1.0f32, 1.0f32).unwrap();
+        let w = Array2::random_using((config.reservoir_size, input_dim), &dist, rng);
         w * config.input_scale
     }
 
     /// Process one input and update reservoir state
     pub fn step(&mut self, input: &Array1<f32>) -> Array1<f32> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Handle input dimension mismatch
         let processed_input = if input.len() != self.input_dim {
             let mut padded = Array1::zeros(self.input_dim);
             let copy_len = input.len().min(self.input_dim);
-            padded.slice_mut(s![..copy_len]).assign(&input.slice(s![..copy_len]));
+            padded
+                .slice_mut(s![..copy_len])
+                .assign(&input.slice(s![..copy_len]));
             padded
         } else {
             input.clone()
         };
 
         // Compute pre-activation
-        let mut pre_activation = self.w_reservoir.dot(&self.state) + self.w_input.dot(&processed_input);
+        let mut pre_activation =
+            self.w_reservoir.dot(&self.state) + self.w_input.dot(&processed_input);
 
         // Add feedback if available
         if let (Some(ref w_fb), Some(ref prev_out)) = (&self.w_feedback, &self.prev_output) {
@@ -241,14 +265,14 @@ impl EchoStateNetwork {
         // Add noise
         let noise_dist = Normal::new(0.0, self.config.noise_level as f64).unwrap();
         let noise: Array1<f32> = Array1::from_iter(
-            (0..self.config.reservoir_size).map(|_| rng.sample(&noise_dist) as f32)
+            (0..self.config.reservoir_size).map(|_| rng.sample(noise_dist) as f32),
         );
         pre_activation = pre_activation + noise;
 
         // Apply activation and leaky integration
         let activated = self.activation.apply_array(&pre_activation);
-        self.state = (1.0 - self.config.leaking_rate) * &self.state
-            + self.config.leaking_rate * activated;
+        self.state =
+            (1.0 - self.config.leaking_rate) * &self.state + self.config.leaking_rate * activated;
 
         // Save to history
         self.state_history.push_back(self.state.clone());
@@ -266,7 +290,9 @@ impl EchoStateNetwork {
         // Add bias if configured
         let state_with_bias = if self.config.use_bias {
             let mut extended = Array1::zeros(self.state.len() + 1);
-            extended.slice_mut(s![..self.state.len()]).assign(&self.state);
+            extended
+                .slice_mut(s![..self.state.len()])
+                .assign(&self.state);
             extended[self.state.len()] = 1.0; // Bias term
             extended
         } else {
@@ -284,18 +310,26 @@ impl EchoStateNetwork {
         washout: usize,
     ) -> Result<f64, EsnError> {
         if inputs.len() != targets.len() {
-            return Err(EsnError::TrainingError("Input/target length mismatch".into()));
+            return Err(EsnError::TrainingError(
+                "Input/target length mismatch".into(),
+            ));
         }
 
         if inputs.len() <= washout {
-            return Err(EsnError::TrainingError("Not enough samples after washout".into()));
+            return Err(EsnError::TrainingError(
+                "Not enough samples after washout".into(),
+            ));
         }
 
         let output_dim = targets[0].len();
         self.output_dim = Some(output_dim);
 
-        info!("Training ESN: {} samples, {} washout, {} outputs",
-            inputs.len(), washout, output_dim);
+        info!(
+            "Training ESN: {} samples, {} washout, {} outputs",
+            inputs.len(),
+            washout,
+            output_dim
+        );
 
         // Collect reservoir states
         self.reset();
@@ -356,7 +390,10 @@ impl EchoStateNetwork {
                 info!("Training complete. MSE: {:.6}", mse);
                 Ok(mse)
             }
-            Err(e) => Err(EsnError::TrainingError(format!("Linear solve failed: {}", e)))
+            Err(e) => Err(EsnError::TrainingError(format!(
+                "Linear solve failed: {}",
+                e
+            ))),
         }
     }
 
@@ -421,9 +458,9 @@ impl EchoStateNetwork {
 
     /// Set feedback weights
     pub fn set_feedback(&mut self, output_dim: usize) {
-        let mut rng = rand::thread_rng();
-        let dist = Uniform::new(-1.0f32, 1.0f32);
-        let w = Array2::random_using((self.config.reservoir_size, output_dim), dist, &mut rng);
+        let mut rng = rand::rng();
+        let dist = Uniform::new(-1.0f32, 1.0f32).unwrap();
+        let w = Array2::random_using((self.config.reservoir_size, output_dim), &dist, &mut rng);
         self.w_feedback = Some(w * self.config.feedback_scale);
         self.output_dim = Some(output_dim);
     }
@@ -469,7 +506,9 @@ impl HierarchicalEsn {
         activations: Vec<Activation>,
     ) -> Result<Self, EsnError> {
         if configs.len() != activations.len() {
-            return Err(EsnError::InvalidConfig("Config and activation count mismatch".into()));
+            return Err(EsnError::InvalidConfig(
+                "Config and activation count mismatch".into(),
+            ));
         }
 
         let mut layers = Vec::with_capacity(configs.len());
@@ -508,7 +547,9 @@ impl HierarchicalEsn {
         let mut offset = 0;
         for layer in &self.layers {
             let state = layer.get_state();
-            combined.slice_mut(s![offset..offset + state.len()]).assign(state);
+            combined
+                .slice_mut(s![offset..offset + state.len()])
+                .assign(state);
             offset += state.len();
         }
 
@@ -579,8 +620,14 @@ mod tests {
     #[test]
     fn test_hierarchical_esn() {
         let configs = vec![
-            EsnConfig { reservoir_size: 50, ..Default::default() },
-            EsnConfig { reservoir_size: 30, ..Default::default() },
+            EsnConfig {
+                reservoir_size: 50,
+                ..Default::default()
+            },
+            EsnConfig {
+                reservoir_size: 30,
+                ..Default::default()
+            },
         ];
         let activations = vec![Activation::Tanh, Activation::Tanh];
 
