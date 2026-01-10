@@ -1,10 +1,13 @@
-image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[MPL-2.0,link="https://opensource.org/licenses/MPL-2.0"]
+image:https://img.shields.io/badge/license-PMPL--1.0-blue.svg[License,link="https://github.com/hyperpolymath/palimpsest-license"]
 image:https://img.shields.io/badge/Philosophy-Palimpsest-purple.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-licence"]
 
 // SPDX-FileCopyrightText: 2024 Jonathan D.A. Jewell
-// SPDX-License-Identifier: MIT OR AGPL-3.0-or-later
+// SPDX-License-Identifier: PMPL-1.0 OR PMPL-1.0-or-later
 
 = ESN: Echo State Networks in Rust
+
+
+
 
 :author: Jonathan D.A. Jewell (hyperpolymath)
 :toc: macro
@@ -440,8 +443,8 @@ Expected output (NRMSE ~0.016):
 
 Dual-licensed under your choice of:
 
-* **MIT License** — permissive, attribution required
-* **AGPL-3.0-or-later** — copyleft, network use triggers distribution
+* **Palimpsest-MPL License v1.0 (PMPL-1.0)** — permissive, attribution required
+* **PMPL-1.0-or-later** — copyleft, network use triggers distribution
 
 See link:LICENSE.txt[LICENSE.txt] for details.
 
